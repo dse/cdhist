@@ -66,7 +66,6 @@ void cdhist_append(char* filename, char* this_dirname) {
                     write_pos = read_pos;
                     continue;
                }
-               line[len - 1] = '\n';
 
                /* "append" the line we just read to the write_pos */
                fseek(fh, write_pos, SEEK_SET);
