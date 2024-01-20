@@ -1,5 +1,8 @@
 #include "filename.h"
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 
 char* filename = NULL;
 char* default_basename = ".cdhist";

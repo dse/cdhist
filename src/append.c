@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/file.h>
 #include <unistd.h>
+#include <errno.h>
 
 /**
  * Append this_dirname to the cdhist file.  Any previous occurrences
@@ -49,12 +50,12 @@ void cdhist_append(char* filename, char* this_dirname) {
 
      while (1) {
           /* read next line */
-          char* line = getline(fh);
+          char* line = cdhist_getline(fh);
           if (line == NULL) {
                if (errno == 0) {
                     break;
                }
-               perror("getline");
+               perror("cdhist_getline");
                exit(1);
           }
           read_pos = ftell(fh);
@@ -65,6 +66,7 @@ void cdhist_append(char* filename, char* this_dirname) {
                     write_pos = read_pos;
                     continue;
                }
+               line[len - 1] = '\n';
 
                /* "append" the line we just read to the write_pos */
                fseek(fh, write_pos, SEEK_SET);
@@ -83,7 +85,8 @@ void cdhist_append(char* filename, char* this_dirname) {
 
      /* append this directory */
      fseek(fh, write_pos, SEEK_SET);
-     fputs(line, fh);
+     fputs(this_dirname, fh);
+     fputs("\n", fh);
      ftruncate(fileno(fh), ftell(fh));
      fclose(fh);
 

@@ -1,7 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+
 char* getline_buf = NULL;
 int getline_bufsiz = 0;
 
-char* getline(FILE* fp) {
+char* cdhist_getline(FILE* fp) {
      if (!getline_buf) {
           getline_bufsiz = 4096;
           getline_buf = malloc(getline_bufsiz);

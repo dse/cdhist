@@ -1,6 +1,8 @@
 #ifndef GETLINE_H
 #define GETLINE_H
 
-char* getline(FILE*);
+#include <stdio.h>
+
+char* cdhist_getline(FILE*);
 
 #endif
