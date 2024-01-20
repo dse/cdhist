@@ -3,10 +3,13 @@
 #include <errno.h>
 #include <string.h>
 
+#include <unistd.h>
+#include <fcntl.h>
+
 char* getline_buf = NULL;
 int getline_bufsiz = 0;
 
-char* cdhist_getline(FILE* fp) {
+char* cdhist_getline(FILE* fh) {
      if (!getline_buf) {
           getline_bufsiz = 4096;
           getline_buf = malloc(getline_bufsiz);
@@ -19,10 +22,15 @@ char* cdhist_getline(FILE* fp) {
      int init = 1;
      while (1) {
           int bytes = getline_bufsiz - (p - getline_buf); /* remaining buffer size */
-          if (fgets(p, bytes, fp) == NULL) {
-               if (errno == 0) {
-                    return init ? NULL : getline_buf;
+          errno = 0;
+          int is_eof = feof(fh);
+          char* pp = fgets(p, bytes, fh);
+          if (!pp) {
+               if (ferror(fh)) {
+                    perror("cdhist_getline");
+                    exit(errno);
                }
+               return NULL;
                return NULL;
           }
           init = 0;

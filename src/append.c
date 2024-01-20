@@ -3,9 +3,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <sys/file.h>
 #include <unistd.h>
 #include <errno.h>
+
+#include <unistd.h>
+#include <fcntl.h>
 
 /**
  * Append this_dirname to the cdhist file.  Any previous occurrences
@@ -27,7 +31,8 @@ void cdhist_append(char* filename, char* this_dirname) {
 
      /* create an advisory lock -- FIXME: in really old Linux kernels
         flock() doesn't work over NFS and such; you must use fcntl(). */
-     FILE* lock_fh = fopen(lock_filename, "w");
+
+     FILE* lock_fh = fopen(lock_filename, "a+");
      if (!lock_fh) {
           perror(lock_filename);
           exit(1);
@@ -38,8 +43,41 @@ void cdhist_append(char* filename, char* this_dirname) {
           exit(1);
      }
 
+     /**
+      * None of the fopen read/write modes fit my requirements.
+      * "r+" does not create the file if it does not exist;
+      * "w+" truncates the file; and
+      * "a+" only appends.
+      */
+
+     /* don't truncate the file; create the file if nonexistent */
      FILE* fh = fopen(filename, "a+");
-     fseek(fh, 0, SEEK_SET);
+     if (!fh) {
+          perror(filename);
+          exit(1);
+     }
+     /* now r+ (which would fail on nonexistent files) will do what I need. */
+     fh = freopen(filename, "r+", fh);
+     if (!fh) {
+          perror(filename);
+          exit(1);
+     }
+
+     int flags = fcntl(fileno(fh), F_GETFL, NULL);
+     if (flags == -1) {
+          perror("fcntl F_GETFL");
+          exit(1);
+     }
+     flags = flags & ~O_APPEND;
+     if (-1 == fcntl(fileno(fh), F_SETFL, flags)) {
+          perror("fcntl F_SETFL");
+          exit(1);
+     }
+
+     if (fseek(fh, 0, SEEK_SET)) {
+          perror(filename);
+          exit(1);
+     }
 
      int in_sync = 1;           /* are r/w offsets in sync? */
 
@@ -55,16 +93,25 @@ void cdhist_append(char* filename, char* this_dirname) {
                if (errno == 0) {
                     break;
                }
-               perror("cdhist_getline");
+               perror("cdhist_append");
                exit(1);
           }
           read_pos = ftell(fh);
+
+          int len = strlen(line);
+          int term = line[len - 1];
+          if (term == '\n') {
+               line[len - 1] = '\0';
+          }
 
           /* not equal to this_dirname? */
           if (strcmp(line, this_dirname)) {
                if (in_sync) {
                     write_pos = read_pos;
                     continue;
+               }
+               if (term == '\n') {
+                    line[len - 1] = term;
                }
 
                /* "append" the line we just read to the write_pos */
