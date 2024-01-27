@@ -1,5 +1,5 @@
 APPEND_BIN = bin/cdhist-append
-SRCS = src/cdhist-append.c src/filename.c src/getline.c src/main.c
+SRCS = src/cdhist-append.c src/filename.c src/getline.c src/append.c
 HDRS = $(patsubst %.c,%.h,$(SRCS))
 OBJS = $(patsubst %.c,%.o,$(SRCS))
 
