@@ -7,9 +7,26 @@
 #include <sys/file.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
 
 #include <unistd.h>
 #include <fcntl.h>
+
+/* for generating timestamps */
+#define TIMESTAMP_STRFTIME    "%a %Y-%m-%dT%H:%M:%S%z"
+
+/* for scanning timestamps to skip them "Fri 2024-01-01T12:34:56-0500" */
+#define TIMESTAMP_SCANF       "%8s %u-%u-%uT%u:%u:%u%1[+-]%u %n"
+
+/* for counting fields read by sscanf */
+char junkbuf[128];
+int junk;
+
+/* for confirming timestamps were read */
+#define TIMESTAMP_SCANF_COUNT 9
+
+/* for generating timestamps */
+char timebuf[128];
 
 /**
  * Append this_dirname to the cdhist file.  Any previous occurrences
@@ -98,20 +115,31 @@ void cdhist_append(char* filename, char* this_dirname) {
           }
           read_pos = ftell(fh);
 
-          int len = strlen(line);
-          int term = line[len - 1];
+          char* dir = line;
+          int skip = 0;
+          int scanned = sscanf(line, TIMESTAMP_SCANF, junkbuf, &junk, &junk, &junk, &junk, &junk, &junk, junkbuf, &junk, &skip);
+          if (scanned == TIMESTAMP_SCANF_COUNT) {
+               dir += skip;
+          }
+
+          int len = strlen(dir);
+
+          /* (temporarily) remove the terminating newline */
+          int term = dir[len - 1];
           if (term == '\n') {
-               line[len - 1] = '\0';
+               /* [A] */
+               dir[len - 1] = '\0';
           }
 
           /* not equal to this_dirname? */
-          if (strcmp(line, this_dirname)) {
+          if (strcmp(dir, this_dirname)) {
                if (in_sync) {
                     write_pos = read_pos;
                     continue;
                }
                if (term == '\n') {
-                    line[len - 1] = term;
+                    /* restore string terminator we may have written \0 over [A] */
+                    dir[len - 1] = term;
                }
 
                /* "append" the line we just read to the write_pos */
@@ -131,6 +159,16 @@ void cdhist_append(char* filename, char* this_dirname) {
 
      /* append this directory */
      fseek(fh, write_pos, SEEK_SET);
+     time_t t = time(NULL);
+     struct tm* tmp = localtime(&t);
+     if (!tmp) {
+          perror("localtime");
+          exit(1);
+     }
+     if (strftime(timebuf, 128, TIMESTAMP_STRFTIME, tmp)) {
+          fputs(timebuf, fh);
+          fputs(" ", fh);
+     }
      fputs(this_dirname, fh);
      fputs("\n", fh);
      ftruncate(fileno(fh), ftell(fh));
