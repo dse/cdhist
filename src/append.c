@@ -36,7 +36,7 @@ void cdhist_append(char* filename, char* this_dirname) {
 
      /* generate lock filename (xxx.lock) */
      char* lock_filename = malloc(6 + strlen(filename));
-     if (!lock_filename) {
+     if (lock_filename == NULL) {
           perror("malloc");
           exit(1);
      }
@@ -51,6 +51,7 @@ void cdhist_append(char* filename, char* this_dirname) {
 
      FILE* lock_fh = fopen(lock_filename, "a+");
      if (!lock_fh) {
+          fprintf(stderr, "Unable to open lock file\n");
           perror(lock_filename);
           exit(1);
      }
@@ -82,16 +83,19 @@ void cdhist_append(char* filename, char* this_dirname) {
 
      int flags = fcntl(fileno(fh), F_GETFL, NULL);
      if (flags == -1) {
-          perror("fcntl F_GETFL");
+          fprintf(stderr, "cannot get flags\n");
+          perror(filename);
           exit(1);
      }
      flags = flags & ~O_APPEND;
      if (-1 == fcntl(fileno(fh), F_SETFL, flags)) {
-          perror("fcntl F_SETFL");
+          fprintf(stderr, "cannot set append flag\n");
+          perror(filename);
           exit(1);
      }
 
      if (fseek(fh, 0, SEEK_SET)) {
+          fprintf(stderr, "Unable to seek\n");
           perror(filename);
           exit(1);
      }
@@ -110,7 +114,8 @@ void cdhist_append(char* filename, char* this_dirname) {
                if (errno == 0) {
                     break;
                }
-               perror("cdhist_append");
+               perror("error reading\n");
+               perror(filename);
                exit(1);
           }
           read_pos = ftell(fh);
@@ -162,7 +167,7 @@ void cdhist_append(char* filename, char* this_dirname) {
      time_t t = time(NULL);
      struct tm* tmp = localtime(&t);
      if (!tmp) {
-          perror("localtime");
+          perror("error getting time");
           exit(1);
      }
      if (strftime(timebuf, 128, TIMESTAMP_STRFTIME, tmp)) {
