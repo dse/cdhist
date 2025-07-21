@@ -12,8 +12,7 @@ int getline_bufsiz = 0;
 char* cdhist_getline(FILE* fh) {
      if (!getline_buf) {
           getline_bufsiz = 4096;
-          getline_buf = malloc(getline_bufsiz);
-          if (!getline_buf) {
+          if (!(getline_buf = malloc(getline_bufsiz))) {
                perror("malloc");
                exit(1);
           }
